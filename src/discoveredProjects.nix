@@ -4,6 +4,8 @@
   autoProjects,
   framework,
 }: let
+  l = lib // builtins;
+
   discoveredProjects = framework.functions.discoverers.discoverProjects {
     inherit settings;
     tree = framework.dlib.prepareSourceTree {inherit source;};
