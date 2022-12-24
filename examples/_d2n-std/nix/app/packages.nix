@@ -4,7 +4,7 @@
 }: {
   default = cell.packages.app;
   app = inputs.dream2nix.lib.makeOutput {
-    inherit (inputs) nixpkgs;
+    pkgs = inputs.nixpkgs;
     source = inputs.src;
     projects = {
       prettier = {

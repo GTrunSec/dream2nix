@@ -71,6 +71,8 @@
   }:
     initDream2nix (loadConfig config) pkgs;
 
+  discoveredProjects = import ./discoveredProjects.nix {inherit lib;};
+
   missingProjectsError = source: ''
     Please pass `projects` to makeFlakeOutputs.
     `projects` can be:
@@ -142,36 +144,14 @@
     initD2N = initDream2nix config;
     dream2nixFor = l.mapAttrs (_: pkgs: initD2N pkgs) allPkgs;
 
-    discoveredProjects = framework.functions.discoverers.discoverProjects {
-      inherit settings;
-      tree = framework.dlib.prepareSourceTree {inherit source;};
-    };
-
-    finalProjects =
-      if autoProjects == true
-      then discoveredProjects
-      else let
-        projectsList = l.attrValues projects;
-      in
-        # skip discovery and just add required attributes to project list
-        l.forEach projectsList
-        (proj:
-          proj
-          // {
-            relPath = proj.relPath or "";
-            translator = proj.translator or (l.head proj.translators);
-            dreamLockPath =
-              framework.functions.discoverers.getDreamLockPath
-              proj
-              (l.head projectsList);
-          });
-
     allBuilderOutputs =
       l.mapAttrs
       (system: pkgs: let
         dream2nix = dream2nixFor."${system}";
         allOutputs = dream2nix.dream2nix-interface.makeOutputs {
-          discoveredProjects = finalProjects;
+          discoveredProjects = discoveredProjects {
+            inherit settings source framework;
+          };
           inherit
             source
             pname
@@ -268,20 +248,32 @@
     flakeOutputs;
 
   makeOutput = {
-    nixpkgs ? null,
+    pkgs ? null,
     source,
     config ? {},
     inject ? {},
     projects ? {},
+    autoProjects ? false,
     settings ? [],
     pname ? throw "Please pass `pname` to makeOutput",
     packageOverrides ? {},
     sourceOverrides ? oldSources: {},
   }: let
+    config = loadConfig (args.config or {});
+
     initD2N = initDream2nix config;
-    dream2nixFor = initD2N nixpkgs;
+    dream2nixFor = initD2N pkgs;
     dream2nix = dream2nixFor;
+    framework = import ./modules/framework.nix {
+      inherit lib externalPaths externalSources inputs;
+      dream2nixConfig = config;
+      pkgs = throw "pkgs is not available before nixpkgs is imported";
+    };
+
     output = dream2nix.dream2nix-interface.makeOutputs {
+      discoveredProjects = discoveredProjects {
+        inherit settings source framework;
+      };
       inherit
         source
         pname
