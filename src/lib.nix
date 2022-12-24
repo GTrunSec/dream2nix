@@ -266,8 +266,36 @@
       flakifiedOutputsList;
   in
     flakeOutputs;
+
+  makeOutput = {
+    nixpkgs ? null,
+    source,
+    config ? {},
+    inject ? {},
+    projects ? {},
+    settings ? [],
+    pname ? throw "Please pass `pname` to makeOutput",
+    packageOverrides ? {},
+    sourceOverrides ? oldSources: {},
+  }: let
+    initD2N = initDream2nix config;
+    dream2nixFor = initD2N nixpkgs;
+    dream2nix = dream2nixFor;
+    output = dream2nix.dream2nix-interface.makeOutputs {
+      inherit
+        source
+        pname
+        settings
+        sourceOverrides
+        packageOverrides
+        inject
+        projects
+        ;
+    };
+  in
+    output.packages.default;
 in {
-  inherit init makeFlakeOutputs makeFlakeOutputsForIndexes;
+  inherit init makeFlakeOutputs makeFlakeOutputsForIndexes makeOutput;
   dlib = import ./modules/dlib.nix {inherit lib;};
   riseAndShine = throw "Use makeFlakeOutputs instead of riseAndShine.";
 }
